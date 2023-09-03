@@ -1,0 +1,36 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+h1 {
+  text-align: center;
+  color: #333;
+}
+
+p {
+  line-height: 1.5;
+  margin: 20px;
+}
+
+nav {
+  background-color: #333;
+}
+
+nav a {
+  color: #fff;
+  display: inline-block;
+  padding: 15px 20px;
+  text-decoration: none;
+}
+
+ul {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+li {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
