@@ -6,6 +6,7 @@ import response as responseClass
 endpoints = {
 '/': 'templates/index.html',
 '/about': 'templates/about.html',
+'/info': 'templates/about.html',
 '/experience': 'templates/experience.html',
 '/projects': 'templates/projects.html',
 '/style.css': 'static/style.css',
@@ -26,7 +27,15 @@ def projects(request):
 def index(request):
     response_text = readFile('templates/index.html')
     response = responseClass.Response('HTTP/1.1', 200, 'OK', {}, response_text)
-    print(f"here is the returned response: \n {response.classToResponseStr()}")
+    response.headers['Content-Type'] = 'text/html'
+    response.headers['Date'] = datetime.datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT")
+    
+    response.headers['Server'] = 'Jaden\'s Server'
+    response.headers['Connection'] = 'close'
+    response.headers['Last-Modified'] = 'Wed, 21 Oct 2015 07:28:00 GMT'
+    response.headers['Content-Length'] = len(response.classToResponseStr())
+
+
     return response
 
 def about(request):
@@ -40,12 +49,25 @@ def experience(request):
 def info(request):
     response_text = readFile('templates/about.html')
     response = responseClass.Response('HTTP/1.1', 301, 'OK', {'Content-Type': 'text/html'}, response_text)
-    response.locationHeader('/about')
+    response.headers['Location'] = '/about'
     return response
 
 def notFound(request):
-    response_text = "404 Not Found"
+    response_text = f'{request.method} {request.uri} HTTP/1.1 404 Not Found\n\n<h1>404 Not Found</h1>'
     return responseClass.Response('HTTP/1.1', 404, 'Not Found', {'Content-Type': 'text/html'}, response_text)
+
+def styleCSS(request):
+    response_text = readFile('static/styles.css')
+    response = responseClass.Response('HTTP/1.1', 200, 'OK', {'Content-Type': 'text/css'}, response_text)
+    response.headers['Content-Length'] = response.getContent_length()
+    return response
+
+def scriptJS(request):
+    response_text = readFile('static/code.js')
+    response = responseClass.Response('HTTP/1.1', 200, 'OK', {'Content-Type': 'text/javascript'}, response_text)
+    response.headers['Content-Length'] = response.getContent_length()
+    return response
+        
 
 # ----- middleware --------
 
@@ -57,42 +79,6 @@ def checkValidRoute(request):
         return endpoints[route]
     else:
         return False
-        
-
-def content_length(next):
-    def middleware(response):
-        response = next(response)
-        response.setContent_length()
-        return response
-    return middleware
-
-# def add_server_header(next):
-#     def middleware(request):
-#         response = next(request)
-#         response.headers['Server'] = "Jaden\'s Server"
-#         return response
-#     return middleware
-
-def add_date_header(next):
-    def middleware(request):
-        response = next(request)
-        response.headers['Date'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        return response
-    return middleware
-
-def add_connection_close(next):
-    def middleware(request):
-        response = next(request)
-        response.headers['Connection'] = 'close'
-        return response
-    return middleware
-
-def add_cashed_control(next):
-    def middleware(request):
-        response = next(request)
-        response.headers['Cache-Control'] = '200'
-        return response
-    return middleware
 
 def add_content_type(next):
     def middleware(res):
@@ -105,17 +91,15 @@ def add_content_type(next):
 # ----- router --------
 
 def route(request):
-    if request.method != 'GET':
-        return notFound(request)
-    if request.version != 'HTTP/1.1':
-        return notFound(request)
     
+ 
     route = request.uri #get the path from the request
+    if route.endswith('.js'):
+        return scriptJS(request)
+    if route.endswith('.css'):
+        return styleCSS(request)
+    
     if route in endpoints:
-        if route == '/style.css':
-            return responseClass.Response('HTTP/1.1', 200, 'OK', {'Content-Type': 'text/css'}, readFile('static/style.css'))
-        elif route == '/script.js':
-            return responseClass.Response('HTTP/1.1', 200, 'OK', {'Content-Type': 'text/javascript'}, readFile('static/code.js'))
         if route == '/':
              return index(request)
         elif route == '/about':
@@ -124,8 +108,67 @@ def route(request):
              return experience(request)
         elif route == '/projects':
             return projects(request)
-        else:
-            return notFound(request)
+        elif route == '/info':
+            return info(request)
+            
+    else:
+        return notFound(request)
 
     return notFound(request)
+
+def route2(request):
+
+    route = request.uri
+    if route in endpoints:
+        if route == '/':
+             return index(request)
+        elif route == '/about':
+             return about(request)
+        elif route == '/experience':
+             return experience(request)
+        elif route == '/projects':
+            return projects(request)
+            
+    else:
+        return notFound(request)
+
+    return notFound(request)
+
+
+def middleWare_Static_files(next):
+
+    def middleware(request):
+        if request.uri.endswith('.js'):
+            return scriptJS(request)
+        if request.uri.endswith('.css'):
+            return styleCSS(request)
+        #if not a static file then return the route
+        return next(request)
+    return middleware
+
+def middleware_Log(next):
+    def middleware(request):
+        print(f"{request.method} {request.uri} HTTP/1.1")
+        return next(request)
+    return middleware
+
+def routeFractory(request):
+    middleware = middleWare_Static_files(route)
+    return middleware(request)
+
+def compose(end_handler, middleware_list):
+    
+    # Start with end handler
+    previous_handler = end_handler
+    
+    # Loop in reverse through middleware
+    for middleware in reversed(middleware_list):
+      
+        # Nest previous handler inside current middleware 
+        previous_handler = middleware(previous_handler)
+    
+    # Return composed function chain
+    return previous_handler
+
+
 

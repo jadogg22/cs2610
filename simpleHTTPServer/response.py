@@ -27,5 +27,6 @@ class Response:
     def __repr__(self):
         return "Response: " + self.version + " " + str(self.code) + " " + self.reason + "\n"
     
-    def setContent_length(self):
-        return len(self.classToResponseStr())
+    def getContent_length(self):
+        return len(bytes(self.text, "UTF-8"))
+        
