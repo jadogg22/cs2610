@@ -16,6 +16,8 @@ def parse_headers(headers_str):
     method = parts[0]
     uri = parts[1]
     version = parts[2]
+   
+    
     text = ""
     inHeader = True
 
@@ -24,17 +26,23 @@ def parse_headers(headers_str):
         if line.strip() == '':
             inHeader = False
             continue
+
         # if we are nolonger in the header, add the rest of the lines to the text
         if inHeader == False:
             text += f"{line}\n"
             continue
+        try:
+            header, value = line.split(':', 1)
+            header = header.strip()
+            value = value.strip()
 
-        header, value = line.split(':', 1)
-        header = header.strip()
-        value = value.strip()
+            headers[header] = value
         
         # Add header to dict
-        headers[header] = value
+        
+        except Exception:
+            continue
+        
 
     # create request class and return it
     parsedRequest = request.Request(method, uri, version, text, headers)
@@ -43,10 +51,9 @@ def parse_headers(headers_str):
 
 def encodeResponse(response):
     text = response.classToResponseStr()
-    print(text)
     return bytes(text, "UTF-8")
 
-debugResponse = response.Response('HTTP/1.1', 200, 'OK', {"date": "today"}, "Hello World")
+#debugResponse = response.Response('HTTP/1.1', 200, 'OK', {"date": "today"}, "Hello World")
 
 #debugResponse.createServerHeader("Jaden\'s Server")
 #print(debugResponse.classToResponseStr())

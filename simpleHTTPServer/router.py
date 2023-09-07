@@ -1,6 +1,6 @@
-import hTTP_Parser
 import datetime
 import response as responseClass
+import request as requ
 
 
 endpoints = {
@@ -9,8 +9,6 @@ endpoints = {
 '/info': 'templates/about.html',
 '/experience': 'templates/experience.html',
 '/projects': 'templates/projects.html',
-'/style.css': 'static/style.css',
-'/script.js': 'static/code.js'
 }
 
 #------endpoints---------
@@ -27,15 +25,6 @@ def projects(request):
 def index(request):
     response_text = readFile('templates/index.html')
     response = responseClass.Response('HTTP/1.1', 200, 'OK', {}, response_text)
-    response.headers['Content-Type'] = 'text/html'
-    response.headers['Date'] = datetime.datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT")
-    
-    response.headers['Server'] = 'Jaden\'s Server'
-    response.headers['Connection'] = 'close'
-    response.headers['Last-Modified'] = 'Wed, 21 Oct 2015 07:28:00 GMT'
-    response.headers['Content-Length'] = len(response.classToResponseStr())
-
-
     return response
 
 def about(request):
@@ -70,105 +59,85 @@ def scriptJS(request):
         
 
 # ----- middleware --------
-
-
-
-def checkValidRoute(request):
-    route = request.uri
-    if route in endpoints:
-        return endpoints[route]
-    else:
-        return False
-
-def add_content_type(next):
-    def middleware(res):
-        response = next(res)
+def neededHeaders_middleware():
+    def middleware(response):
         response.headers['Content-Type'] = 'text/html'
+        response.headers['Server'] = 'Jaden\'s Server'
+        response.headers['Connection'] = 'close'
+        response.headers['Cache-Control'] = 'max-age=200'
+        response.headers['Date'] = datetime.datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT")
+
         return response
     return middleware
 
 
-# ----- router --------
-
-def route(request):
-    
- 
-    route = request.uri #get the path from the request
-    if route.endswith('.js'):
-        return scriptJS(request)
-    if route.endswith('.css'):
-        return styleCSS(request)
-    
-    if route in endpoints:
-        if route == '/':
-             return index(request)
-        elif route == '/about':
-             return about(request)
-        elif route == '/experience':
-             return experience(request)
-        elif route == '/projects':
-            return projects(request)
-        elif route == '/info':
-            return info(request)
-            
-    else:
-        return notFound(request)
-
-    return notFound(request)
-
-def route2(request):
-
-    route = request.uri
-    if route in endpoints:
-        if route == '/':
-             return index(request)
-        elif route == '/about':
-             return about(request)
-        elif route == '/experience':
-             return experience(request)
-        elif route == '/projects':
-            return projects(request)
-            
-    else:
-        return notFound(request)
-
-    return notFound(request)
+def contentLength_middleware():
+    def middleware(response):
+        if response.code not in [404, 401, 301, 418]:
+            response.headers['Content-Length'] = response.getContent_length()
+        return response
+    return middleware
 
 
-def middleWare_Static_files(next):
+# ----- router --------response
 
+
+def middleWare_logging():
+    def middleware(object):
+        if isinstance(object, requ.Request):
+            print(f'request: {object.method} {object.uri}')
+        elif isinstance(object, responseClass.Response):
+            #TODO: add logging for response uri
+            print(f'responese: {object.code} {object.reason}')
+        return object
+    return middleware
+
+def middleWare_Static_files():
     def middleware(request):
         if request.uri.endswith('.js'):
             return scriptJS(request)
         if request.uri.endswith('.css'):
             return styleCSS(request)
         #if not a static file then return the route
-        return next(request)
+        return request
     return middleware
-
-def middleware_Log(next):
+    
+def checkValidRoute():
     def middleware(request):
-        print(f"{request.method} {request.uri} HTTP/1.1")
-        return next(request)
+        if isinstance(request, responseClass.Response):
+            return request
+        
+        route = request.uri
+        if route in endpoints:
+            if route == '/':
+                return index(request)
+            elif route == '/about':
+                return about(request)
+            elif route == '/experience':
+                return experience(request)
+            elif route == '/projects':
+                return projects(request)
+            elif route == '/info':
+                return info(request)
+                    
+        else:
+            return notFound(request)
+        
     return middleware
 
-def routeFractory(request):
-    middleware = middleWare_Static_files(route)
-    return middleware(request)
-
-def compose(end_handler, middleware_list):
+#request = hTTP_Parser.parse_headers('GET / HTTP/1.1\nHost: localhost.8000\nConnection: keep-alive\nCache-Control: max-age=0\nUpgrade-Insecure-Requests: 1\nUser-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)\nChrome/91.0.4472.114 Safari/537.36\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng\nAccept-Encoding: gzip, deflate, br\nAccept-Language: en-US,en;q=0.9\n\n')
+# middleware chain is reverse order
+def createResponse(request):
+    response =  middleWare_logging()(
+                checkValidRoute()(
+                middleWare_Static_files()(
+                middleWare_logging()(request))))
     
-    # Start with end handler
-    previous_handler = end_handler
-    
-    # Loop in reverse through middleware
-    for middleware in reversed(middleware_list):
-      
-        # Nest previous handler inside current middleware 
-        previous_handler = middleware(previous_handler)
-    
-    # Return composed function chain
-    return previous_handler
+    #for the additional headers
+    if request.uri in endpoints:
+        response =  contentLength_middleware()(
+                    neededHeaders_middleware()(response))
 
-
-
+        
+    return response
+            
