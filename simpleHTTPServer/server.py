@@ -1,6 +1,8 @@
 import socket
 import hTTP_Parser
 import router
+import test
+
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.bind(("127.0.0.1", 8000))
@@ -18,7 +20,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             
             request = hTTP_Parser.decodeRequest(data) # returns a request object 
 
-            response = router.createResponse(request)
+            response = test.createResponse(request)
             
 
 

@@ -140,3 +140,5 @@ def createResponse(request):
         
     return response
             
+request = requ.Request("GET", "/", "HTTP/1.1",'',{})
+response = createResponse(request)

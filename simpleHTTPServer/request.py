@@ -24,3 +24,6 @@ class Request:
         text += "\n"    
         text += f"{self.text}"
         return text
+    
+#debuging request
+request = Request("GET", "/", "HTTP/1.1",'',{})
