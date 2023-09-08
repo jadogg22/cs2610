@@ -36,8 +36,7 @@ def experience(request):
     return responseClass.Response('HTTP/1.1', 200, 'OK', {'Content-Type': 'text/html'}, response_text)
 
 def info(request):
-    response_text = readFile('templates/about.html')
-    response = responseClass.Response('HTTP/1.1', 301, 'OK', {'Content-Type': 'text/html'}, response_text)
+    response = responseClass.Response('HTTP/1.1', 301, 'OK', {}, '')
     response.headers['Location'] = '/about'
     return response
 

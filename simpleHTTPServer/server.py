@@ -11,6 +11,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         connection, addr = s.accept()
         with connection:
             data = connection.recv(8192)
+            if not data:
+                connection.close()
+                continue
             
             
             request = hTTP_Parser.decodeRequest(data) # returns a request object 
